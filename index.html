@@ -13,6 +13,7 @@
   :root {
     --bg: #201C1B;
     --surface: #2C2724;
+    --surface-locked: #3A2E19;
     --border: #4A423D;
     --accent: #D9A441;
     --accent-2: #6B2D45;
@@ -180,7 +181,7 @@
     transform-style: preserve-3d;
   }
 
-  .card.locked { border-color: var(--accent); }
+  .card.locked { border-color: var(--accent); background: var(--surface-locked); }
 
   .card.flipping { transform: rotateY(90deg); }
 
@@ -676,7 +677,7 @@
     cardsEl.innerHTML = "";
     currentCombo.forEach((ing, idx) => {
       const card = document.createElement("div");
-      card.className = "card" + (locked[idx] ? " locked" : "") + (animate ? " flipping" : "");
+      card.className = "card" + (locked[idx] ? " locked" : "") + (animate && !locked[idx] ? " flipping" : "");
       card.dataset.idx = idx;
 
       const top = document.createElement("div");
