@@ -118,7 +118,52 @@
   }
 
   @media (max-width: 720px) {
-    .cards { grid-template-columns: 1fr; }
+    .wrap { padding: 1rem 0.75rem 2rem; }
+
+    header { margin-bottom: 1rem; }
+    header h1 { font-size: 1.4rem; }
+
+    .selectors-row { margin-bottom: 1rem; gap: 0.5rem; }
+    .category-selector button {
+      padding: 0.4rem 0.65rem;
+      font-size: 0.75rem;
+    }
+
+    .cards {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .card {
+      min-height: 130px;
+      padding: 0.85rem;
+    }
+
+    .card-name {
+      font-size: 1.05rem;
+      margin: 0.5rem 0;
+      line-height: 1.1;
+    }
+
+    .card-tags { gap: 0.3rem; }
+
+    .tag-chip {
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+    }
+
+    .lock-btn { width: 24px; height: 24px; }
+    .lock-btn svg { width: 15px; height: 15px; }
+
+    .btn-row { gap: 0.5rem; margin-bottom: 1.5rem; }
+    .btn { padding: 0.6rem 1rem; font-size: 0.8rem; }
+  }
+
+  /* Extra-compact tier for 5-6 card combos on small screens, and very narrow phones */
+  @media (max-width: 480px) {
+    .card { min-height: 115px; padding: 0.7rem; }
+    .card-name { font-size: 0.95rem; }
   }
 
   .card {

@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flavor Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #201C1B;
+    --surface: #2C2724;
+    --border: #4A423D;
+    --accent: #D9A441;
+    --accent-2: #6B2D45;
+    --text: #F2EDE4;
+    --text-muted: #A69C8F;
+
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --text-hero: 2.5rem;
+    --text-ingredient: 1.75rem;
+    --text-body: 1rem;
+    --text-small: 0.875rem;
+    --text-tag: 0.7rem;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+  }
+
+  /* ===== Header ===== */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+  }
+
+  header h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-hero);
+    letter-spacing: -0.01em;
+  }
+
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ===== Selectors ===== */
+  .selectors-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .category-selector {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0;
+  }
+  .category-selector button {
+    font-family: var(--font-body);
+    font-size: var(--text-small);
+    font-weight: 500;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 0.65rem 1.25rem;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+  }
+  .category-selector button:last-child { border-right: none; }
+  .category-selector button.active {
+    background: var(--accent);
+    color: #201C1B;
+  }
+
+  /* ===== Cards ===== */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    perspective: 1200px;
+  }
+
+  @media (max-width: 720px) {
+    .cards { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    min-height: 300px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: transform 0.3s, border-color 0.2s;
+    transform-style: preserve-3d;
+  }
+
+  .card.locked { border-color: var(--accent); }
+
+  .card.flipping { transform: rotateY(90deg); }
+
+  .card-top {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .lock-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card.locked .lock-btn { color: var(--accent); }
+  .lock-btn svg { width: 18px; height: 18px; }
+
+  .card-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-ingredient);
+    margin: 1rem 0;
+    line-height: 1.15;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tag-chip {
+    font-family: var(--font-mono);
+    font-size: var(--text-tag);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  /* ===== Buttons ===== */
+  .btn-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+
+  .btn {
+    font-family: var(--font-body);
+    font-size: var(--text-small);
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary {
+    background: var(--accent);
+    color: #201C1B;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  /* ===== Saved combos ===== */
+  section.saved h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .saved-empty {
+    color: var(--text-muted);
+    font-size: var(--text-small);
+  }
+
+  .saved-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .saved-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-size: var(--text-small);
+  }
+
+  .saved-item .delete-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+  }
+  .saved-item .delete-btn:hover { color: var(--accent-2); }
+  .saved-item .delete-btn svg { width: 16px; height: 16px; }
+
+  /* ===== Overlays ===== */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(32, 28, 27, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1.5rem;
+  }
+  .overlay.hidden { display: none; }
+
+  .overlay-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    max-width: 440px;
+    width: 100%;
+  }
+
+  .overlay-card h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .overlay-card p {
+    color: var(--text-muted);
+    font-size: var(--text-small);
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+  }
+
+  .steps {
+    list-style: none;
+    counter-reset: step;
+    margin-bottom: 1.5rem;
+  }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    font-size: var(--text-small);
+  }
+  .steps li::before {
+    content: counter(step);
+    font-family: var(--font-mono);
+    font-size: var(--text-tag);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+  .field label {
+    display: block;
+    font-size: var(--text-small);
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .overlay-btn-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+  }
+
+  .link-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--text-small);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: var(--text-small);
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Flavor Index</h1>
+    <button class="icon-btn" id="help-btn" aria-label="How it works">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5"></path><line x1="12" y1="17" x2="12" y2="17.01"></line></svg>
+    </button>
+  </header>
+
+  <div class="selectors-row">
+    <div class="category-selector" id="category-selector">
+      <button data-cat="sweet">Sweet</button>
+      <button data-cat="savory">Savory</button>
+      <button data-cat="both" class="active">Both</button>
+    </div>
+
+    <div class="category-selector" id="count-selector">
+      <button data-count="3" class="active">3</button>
+      <button data-count="4">4</button>
+      <button data-count="5">5</button>
+      <button data-count="6">6</button>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="btn-row">
+    <button class="btn" id="shuffle-btn">Shuffle</button>
+    <button class="btn btn-primary" id="save-btn">Save Combo</button>
+  </div>
+
+  <section class="saved">
+    <h2>Saved Combos</h2>
+    <div id="saved-empty" class="saved-empty">Nothing saved yet — shuffle, lock what you like, and save it.</div>
+    <div class="saved-list" id="saved-list"></div>
+    <div class="btn-row">
+      <button class="btn" id="export-csv">Export CSV</button>
+      <button class="btn" id="export-excel">Export Excel</button>
+      <button class="btn" id="export-pdf">Export PDF</button>
+    </div>
+  </section>
+</div>
+
+<!-- Onboarding overlay -->
+<div class="overlay hidden" id="onboarding-overlay">
+  <div class="overlay-card">
+    <h2>How it works</h2>
+    <ul class="steps">
+      <li>Choose Sweet, Savory, or Both</li>
+      <li>Press spacebar (or tap the cards on mobile) to shuffle</li>
+      <li>Click the lock icon on a card to keep it while reshuffling the rest</li>
+      <li>Save combos you like</li>
+      <li>Export your saved list when you're done</li>
+    </ul>
+    <div class="overlay-btn-row" style="justify-content: flex-end;">
+      <button class="btn btn-primary" id="start-btn">Start exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- Intake overlay -->
+<div class="overlay hidden" id="intake-overlay">
+  <div class="overlay-card">
+    <h2>Quick intro before you start</h2>
+    <p>This helps us understand who's using the tool — never shared or sold.</p>
+    <div class="field">
+      <label for="intake-email">Email</label>
+      <input type="email" id="intake-email" placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="intake-gender">Gender</label>
+      <select id="intake-gender">
+        <option>Prefer not to say</option>
+        <option>Female</option>
+        <option>Male</option>
+        <option>Non-binary</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="intake-age">Age range</label>
+      <select id="intake-age">
+        <option>Prefer not to say</option>
+        <option>Under 18</option>
+        <option>18-24</option>
+        <option>25-34</option>
+        <option>35-44</option>
+        <option>45-54</option>
+        <option>55+</option>
+      </select>
+    </div>
+    <div class="overlay-btn-row">
+      <button class="link-btn" id="skip-intake-btn">Skip for now</button>
+      <button class="btn btn-primary" id="continue-intake-btn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // =====================================================
+  // CONFIG — replace with your own Google Apps Script Web App URL
+  // If left as the placeholder below, intake submissions are simply skipped (no request sent).
+  // =====================================================
+  const INTAKE_ENDPOINT = "https://script.google.com/macros/s/AKfycbxq7TZIzERJrN-TANd54zDtQ2EsyWMSf3w7BB-Ek-SzwtMcqAHVTSoOnVBXgOCS2ZXq/exec";
+
+  // =====================================================
+  // Ingredient data
+  // =====================================================
+  const ingredients = [
+    { name: "Strawberry", category: "sweet", tags: ["sweet-fruity", "floral"] },
+    { name: "Vanilla", category: "sweet", tags: ["floral", "warm-spice"] },
+    { name: "Dark Chocolate", category: "sweet", tags: ["bitter", "earthy"] },
+    { name: "Honey", category: "sweet", tags: ["sweet-fruity", "floral"] },
+    { name: "Lavender", category: "sweet", tags: ["floral"] },
+    { name: "Lemon", category: "both", tags: ["citrus", "fresh"] },
+    { name: "Orange Blossom", category: "sweet", tags: ["floral", "citrus"] },
+    { name: "Cinnamon", category: "both", tags: ["warm-spice"] },
+    { name: "Cardamom", category: "both", tags: ["warm-spice", "citrus"] },
+    { name: "Brown Butter", category: "both", tags: ["caramelized", "nutty"] },
+    { name: "Toasted Hazelnut", category: "both", tags: ["nutty", "caramelized"] },
+    { name: "Fig", category: "sweet", tags: ["sweet-fruity", "earthy"] },
+    { name: "Blue Cheese", category: "both", tags: ["umami", "fermented"] },
+    { name: "Basil", category: "both", tags: ["herbal", "fresh"] },
+    { name: "Black Pepper", category: "both", tags: ["spicy", "warm-spice"] },
+    { name: "Balsamic Vinegar", category: "both", tags: ["fermented", "tangy"] },
+    { name: "Raspberry", category: "sweet", tags: ["sweet-fruity", "tangy"] },
+    { name: "Rose", category: "sweet", tags: ["floral"] },
+    { name: "Pistachio", category: "both", tags: ["nutty", "floral"] },
+    { name: "Salted Caramel", category: "sweet", tags: ["caramelized", "umami"] },
+    { name: "Coconut", category: "both", tags: ["sweet-fruity", "creamy-dairy"] },
+    { name: "Mango", category: "sweet", tags: ["sweet-fruity", "floral"] },
+    { name: "Ginger", category: "both", tags: ["warm-spice", "spicy"] },
+    { name: "Matcha", category: "sweet", tags: ["bitter", "earthy"] },
+    { name: "Mint", category: "both", tags: ["fresh"] },
+    { name: "Passion Fruit", category: "sweet", tags: ["sweet-fruity", "tangy"] },
+    { name: "Pink Peppercorn", category: "both", tags: ["spicy", "floral"] },
+    { name: "Brown Sugar", category: "sweet", tags: ["caramelized"] },
+    { name: "Yuzu", category: "both", tags: ["citrus", "tangy"] },
+    { name: "Almond", category: "both", tags: ["nutty"] },
+    { name: "Miso", category: "savory", tags: ["umami", "fermented"] },
+    { name: "Garlic", category: "savory", tags: ["umami", "earthy"] },
+    { name: "Smoked Paprika", category: "savory", tags: ["smoky", "spicy"] },
+    { name: "Thyme", category: "savory", tags: ["herbal", "earthy"] },
+    { name: "Rosemary", category: "savory", tags: ["herbal", "earthy"] },
+    { name: "Parmesan", category: "savory", tags: ["umami", "nutty"] },
+    { name: "Tomato", category: "savory", tags: ["umami", "tangy"] },
+    { name: "Soy Sauce", category: "savory", tags: ["umami", "fermented"] },
+    { name: "Chili", category: "both", tags: ["spicy"] },
+    { name: "Cumin", category: "savory", tags: ["earthy", "warm-spice"] },
+    { name: "Lime", category: "both", tags: ["citrus", "fresh"] },
+    { name: "Cilantro", category: "savory", tags: ["herbal", "fresh"] },
+    { name: "Sesame", category: "savory", tags: ["nutty", "umami"] },
+    { name: "Fish Sauce", category: "savory", tags: ["umami", "fermented"] },
+    { name: "Truffle", category: "savory", tags: ["earthy", "umami"] },
+    { name: "Anchovy", category: "savory", tags: ["umami", "fermented"] },
+    { name: "Mustard", category: "savory", tags: ["spicy", "tangy"] },
+    { name: "Smoked Salt", category: "both", tags: ["smoky", "umami"] },
+    { name: "Star Anise", category: "both", tags: ["warm-spice", "earthy"] },
+    { name: "Coconut Milk", category: "both", tags: ["creamy-dairy", "sweet-fruity"] },
+    { name: "Preserved Lemon", category: "savory", tags: ["citrus", "fermented"] },
+    { name: "Black Garlic", category: "savory", tags: ["umami", "caramelized"] },
+    { name: "Sage", category: "savory", tags: ["herbal", "earthy"] },
+    { name: "Maple Syrup", category: "both", tags: ["caramelized", "sweet-fruity"] },
+    { name: "Bacon", category: "both", tags: ["smoky", "umami"] },
+    { name: "Pine Nuts", category: "savory", tags: ["nutty"] },
+    { name: "Goat Cheese", category: "both", tags: ["creamy-dairy", "tangy"] },
+    { name: "Cocoa Nibs", category: "both", tags: ["bitter", "nutty"] }
+  ];
+
+  const compatibilityMap = {
+    "citrus": ["floral", "herbal", "creamy-dairy", "warm-spice", "fresh"],
+    "floral": ["citrus", "sweet-fruity", "creamy-dairy", "herbal"],
+    "herbal": ["citrus", "floral", "fresh", "tangy", "umami"],
+    "spicy": ["sweet-fruity", "creamy-dairy", "smoky", "citrus"],
+    "warm-spice": ["sweet-fruity", "nutty", "caramelized", "citrus", "creamy-dairy"],
+    "earthy": ["nutty", "umami", "warm-spice", "bitter"],
+    "nutty": ["caramelized", "warm-spice", "earthy", "creamy-dairy"],
+    "smoky": ["sweet-fruity", "spicy", "umami", "caramelized"],
+    "umami": ["earthy", "fermented", "smoky", "herbal"],
+    "fermented": ["umami", "herbal", "sweet-fruity", "spicy", "tangy"],
+    "sweet-fruity": ["floral", "warm-spice", "spicy", "tangy", "creamy-dairy", "smoky", "fermented"],
+    "creamy-dairy": ["citrus", "floral", "warm-spice", "nutty", "caramelized", "tangy"],
+    "bitter": ["earthy", "caramelized", "citrus", "creamy-dairy"],
+    "fresh": ["citrus", "herbal", "sweet-fruity"],
+    "caramelized": ["nutty", "warm-spice", "bitter", "smoky", "umami"],
+    "tangy": ["herbal", "sweet-fruity", "fermented", "creamy-dairy"]
+  };
+
+  // =====================================================
+  // State
+  // =====================================================
+  let currentCategory = "both";
+  let comboSize = 3;
+  let currentCombo = new Array(comboSize).fill(null);
+  let locked = new Array(comboSize).fill(false);
+
+  const cardsEl = document.getElementById("cards");
+  const categorySelector = document.getElementById("category-selector");
+  const countSelector = document.getElementById("count-selector");
+
+  // =====================================================
+  // Icons
+  // =====================================================
+  const lockOpenIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>`;
+  const lockClosedIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>`;
+  const trashIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
+
+  // =====================================================
+  // Helpers
+  // =====================================================
+  function filteredIngredients(cat) {
+    if (cat === "both") return ingredients;
+    return ingredients.filter(i => i.category === cat || i.category === "both");
+  }
+
+  function pickForSlot(pool, lockedNames, excludeNames) {
+    // pool of candidates excluding already-used names in this combo
+    let candidates = pool.filter(i => !excludeNames.includes(i.name));
+
+    const lockedTags = currentCombo
+      .filter((ing, idx) => locked[idx] && ing)
+      .flatMap(ing => ing.tags);
+
+    if (lockedTags.length > 0) {
+      const compatibleTags = new Set(
+        lockedTags.flatMap(tag => compatibilityMap[tag] || [])
+      );
+      const compatible = candidates.filter(i => i.tags.some(t => compatibleTags.has(t)));
+      if (compatible.length > 0) candidates = compatible;
+    }
+
+    if (candidates.length === 0) candidates = pool.filter(i => !excludeNames.includes(i.name));
+    if (candidates.length === 0) candidates = pool;
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function shuffle(animate = true) {
+    const pool = filteredIngredients(currentCategory);
+    const usedNames = currentCombo.filter((ing, idx) => locked[idx] && ing).map(ing => ing.name);
+
+    for (let i = 0; i < comboSize; i++) {
+      if (locked[i]) continue;
+      const excludeNames = [...usedNames, ...currentCombo.filter((ing, idx) => idx !== i && ing).map(ing => ing.name)];
+      const pick = pickForSlot(pool, usedNames, excludeNames);
+      currentCombo[i] = pick;
+    }
+    renderCards(animate);
+  }
+
+  function renderCards(animate) {
+    cardsEl.innerHTML = "";
+    currentCombo.forEach((ing, idx) => {
+      const card = document.createElement("div");
+      card.className = "card" + (locked[idx] ? " locked" : "") + (animate ? " flipping" : "");
+      card.dataset.idx = idx;
+
+      const top = document.createElement("div");
+      top.className = "card-top";
+      const lockBtn = document.createElement("button");
+      lockBtn.className = "lock-btn";
+      lockBtn.innerHTML = locked[idx] ? lockClosedIcon : lockOpenIcon;
+      lockBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        locked[idx] = !locked[idx];
+        renderCards(false);
+      });
+      top.appendChild(lockBtn);
+
+      const name = document.createElement("div");
+      name.className = "card-name";
+      name.textContent = ing ? ing.name : "";
+
+      const tags = document.createElement("div");
+      tags.className = "card-tags";
+      if (ing) {
+        ing.tags.forEach(t => {
+          const chip = document.createElement("span");
+          chip.className = "tag-chip";
+          chip.textContent = t;
+          tags.appendChild(chip);
+        });
+      }
+
+      card.appendChild(top);
+      card.appendChild(name);
+      card.appendChild(tags);
+
+      card.addEventListener("click", (e) => {
+        if (e.target.closest(".lock-btn")) return;
+        shuffle();
+      });
+
+      cardsEl.appendChild(card);
+    });
+
+    if (animate) {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          document.querySelectorAll(".card.flipping").forEach(c => c.classList.remove("flipping"));
+        }, 20);
+      });
+    }
+  }
+
+  // =====================================================
+  // Category selector
+  // =====================================================
+  categorySelector.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    currentCategory = btn.dataset.cat;
+    [...categorySelector.children].forEach(b => b.classList.toggle("active", b === btn));
+    locked = new Array(comboSize).fill(false);
+    shuffle();
+  });
+
+  countSelector.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    comboSize = parseInt(btn.dataset.count, 10);
+    [...countSelector.children].forEach(b => b.classList.toggle("active", b === btn));
+    currentCombo = new Array(comboSize).fill(null);
+    locked = new Array(comboSize).fill(false);
+    shuffle();
+  });
+
+  // =====================================================
+  // Shuffle triggers
+  // =====================================================
+  document.getElementById("shuffle-btn").addEventListener("click", () => shuffle());
+
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space" && !isOverlayOpen()) {
+      e.preventDefault();
+      shuffle();
+    }
+  });
+
+  function isOverlayOpen() {
+    return !document.getElementById("onboarding-overlay").classList.contains("hidden") ||
+           !document.getElementById("intake-overlay").classList.contains("hidden");
+  }
+
+  // =====================================================
+  // Save combos
+  // =====================================================
+  function getSavedCombos() {
+    try {
+      return JSON.parse(localStorage.getItem("flavorCombos") || "[]");
+    } catch { return []; }
+  }
+
+  function setSavedCombos(list) {
+    localStorage.setItem("flavorCombos", JSON.stringify(list));
+  }
+
+  function renderSaved() {
+    const list = getSavedCombos();
+    const emptyEl = document.getElementById("saved-empty");
+    const listEl = document.getElementById("saved-list");
+    listEl.innerHTML = "";
+
+    if (list.length === 0) {
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+
+    list.forEach((combo, idx) => {
+      const item = document.createElement("div");
+      item.className = "saved-item";
+      const label = document.createElement("span");
+      label.textContent = combo.names.join(" — ");
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.innerHTML = trashIcon;
+      delBtn.addEventListener("click", () => {
+        const updated = getSavedCombos();
+        updated.splice(idx, 1);
+        setSavedCombos(updated);
+        renderSaved();
+      });
+      item.appendChild(label);
+      item.appendChild(delBtn);
+      listEl.appendChild(item);
+    });
+  }
+
+  document.getElementById("save-btn").addEventListener("click", () => {
+    if (currentCombo.some(i => !i)) return;
+    const names = currentCombo.map(i => i.name);
+    const list = getSavedCombos();
+    const alreadyExists = list.some(c => JSON.stringify([...c.names].sort()) === JSON.stringify([...names].sort()));
+    if (alreadyExists) {
+      showToast("Already saved.");
+      return;
+    }
+    list.push({ names, category: currentCategory, savedAt: new Date().toISOString() });
+    setSavedCombos(list);
+    renderSaved();
+    showToast("Combo saved.");
+  });
+
+  // =====================================================
+  // Toast
+  // =====================================================
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+  }
+
+  // =====================================================
+  // Export
+  // =====================================================
+  document.getElementById("export-csv").addEventListener("click", () => {
+    const list = getSavedCombos();
+    if (list.length === 0) { showToast("Save at least one combo first."); return; }
+    const maxIngredients = Math.max(...list.map(c => c.names.length));
+    const headers = [];
+    for (let i = 1; i <= maxIngredients; i++) headers.push("Ingredient " + i);
+    headers.push("Category");
+    let csv = headers.join(",") + "\n";
+    list.forEach(c => {
+      const row = [...c.names];
+      while (row.length < maxIngredients) row.push("");
+      row.push(c.category);
+      csv += row.join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    downloadBlob(blob, "flavor-combos.csv");
+  });
+
+  document.getElementById("export-excel").addEventListener("click", () => {
+    const list = getSavedCombos();
+    if (list.length === 0) { showToast("Save at least one combo first."); return; }
+    const maxIngredients = Math.max(...list.map(c => c.names.length));
+    const rows = list.map(c => {
+      const row = {};
+      for (let i = 0; i < maxIngredients; i++) {
+        row["Ingredient " + (i + 1)] = c.names[i] || "";
+      }
+      row["Category"] = c.category;
+      return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Combos");
+    XLSX.writeFile(wb, "flavor-combos.xlsx");
+  });
+
+  document.getElementById("export-pdf").addEventListener("click", () => {
+    const list = getSavedCombos();
+    if (list.length === 0) { showToast("Save at least one combo first."); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Flavor Index — Saved Combos", 14, 18);
+    doc.setFontSize(11);
+    let y = 32;
+    list.forEach((c, idx) => {
+      doc.text(`${idx + 1}. ${c.names.join(" — ")} (${c.category})`, 14, y);
+      y += 8;
+      if (y > 280) { doc.addPage(); y = 20; }
+    });
+    doc.save("flavor-combos.pdf");
+  });
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // =====================================================
+  // Onboarding + Intake overlays
+  // =====================================================
+  const onboardingOverlay = document.getElementById("onboarding-overlay");
+  const intakeOverlay = document.getElementById("intake-overlay");
+
+  function initOverlays() {
+    const seenOnboarding = localStorage.getItem("hasSeenOnboarding");
+    const seenIntake = localStorage.getItem("hasSeenIntake");
+
+    if (!seenOnboarding) {
+      onboardingOverlay.classList.remove("hidden");
+    } else if (!seenIntake) {
+      intakeOverlay.classList.remove("hidden");
+    }
+  }
+
+  document.getElementById("start-btn").addEventListener("click", () => {
+    localStorage.setItem("hasSeenOnboarding", "true");
+    onboardingOverlay.classList.add("hidden");
+    if (!localStorage.getItem("hasSeenIntake")) {
+      intakeOverlay.classList.remove("hidden");
+    }
+  });
+
+  document.getElementById("help-btn").addEventListener("click", () => {
+    onboardingOverlay.classList.remove("hidden");
+  });
+
+  function closeIntake() {
+    localStorage.setItem("hasSeenIntake", "true");
+    intakeOverlay.classList.add("hidden");
+  }
+
+  document.getElementById("skip-intake-btn").addEventListener("click", closeIntake);
+
+  document.getElementById("continue-intake-btn").addEventListener("click", () => {
+    const email = document.getElementById("intake-email").value.trim();
+    const gender = document.getElementById("intake-gender").value;
+    const ageRange = document.getElementById("intake-age").value;
+
+    const hasData = email || gender !== "Prefer not to say" || ageRange !== "Prefer not to say";
+
+    if (hasData && INTAKE_ENDPOINT && INTAKE_ENDPOINT !== "PASTE_YOUR_WEB_APP_URL_HERE") {
+      fetch(INTAKE_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ email, gender, ageRange })
+      }).catch(() => {});
+    }
+    closeIntake();
+  });
+
+  // =====================================================
+  // Init
+  // =====================================================
+  shuffle(false);
+  renderSaved();
+  initOverlays();
+</script>
+
+</body>
+</html>
